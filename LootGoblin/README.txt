@@ -1,4 +1,4 @@
-LootGoblin 0.8.0-alpha
+LootGoblin 0.8.1-alpha
 
 A native group-loot extension targeting WoW Forever 1.60.1 (Interface 16001).
 The exact client build has not been confirmed. This is an alpha, checked with
@@ -15,7 +15,7 @@ INSTALL
 5. Run /lg for settings. If you want the default popups back, /lg native
    restores them immediately and saves that preference.
 
-NATIVE PRESENTATION (0.8.0)
+NATIVE PRESENTATION (0.8.1)
 
 Settings are under Options > AddOns > LootGoblin; /lg opens that category.
 The default mode extends Blizzard's original loot frames with a player table.
@@ -23,7 +23,7 @@ The native item header, buttons, timer, and binding confirmations stay in use.
 A confirmed winner receives a full gold row highlight. When the native popup
 closes or is reused, its table moves to the result window until the configured
 timeout. Native spacing expands for tables and restores when disabled; spacing
-changes defer during combat. Standalone panels remain optional in settings.
+changes defer during combat. Live rolls always use native frames; the old standalone replacement is removed.
 /lg native selects Blizzard UI only. History collection continues.
 Restart the client after updating to load the corrected XML template.
 /lg demo uses Forever's MKBGroupLootFrameTemplate, its LootButtonContainer,
@@ -47,7 +47,8 @@ Confirmed personal wins pulse green around the whole loot panel; losses pulse
 red. Three pulses fade to a quieter outline until the result closes. Passes,
 all-pass outcomes, and unknown results do not trigger win/loss effects.
 
-The remaining panel/layout notes apply to optional standalone mode.
+Saved custom presentation settings migrate to native extensions on reload.
+The remaining layout options apply to retained results and session history.
 
 USE
 
@@ -74,8 +75,8 @@ Blizzard still handles binding confirmations; the addon never confirms them
 automatically. A choice is considered confirmed after history or confirmation
 reports it. The addon never rolls automatically on real items.
 
-The default layout stacks item panels in a scrollable window. Choose Tabbed
-window or Separate windows in the main settings. Tabbed mode has previous/next
+Retained results/history can stack in a scrollable window, use tabs, or appear
+in separate windows. Live roll headers always remain native. Tabbed mode has previous/next
 controls for overflow. Separate windows can be dragged individually; their
 positions last for their displayed item. The main window's position is saved.
 
@@ -138,7 +139,7 @@ raw participant rows in the selected date/search scope, including unknown record
 for auditing. It does not export only the chosen win-rate tier. No chat messages
 are sent and no files are written directly by the addon.
 
-Common settings: multi-item layout, compact/larger panels, result timeout, scale,
+Common settings: result/history layout, compact history panels, result timeout, scale,
 hover behavior, position locking, default-popup replacement, preview, and history.
 Advanced: width, row height, font size, opacity, maximum stack height, completed
 history limit, passed-player visibility, class colors, optional result sound,
@@ -223,7 +224,7 @@ Before treating this as ready for regular play, validate on your actual client:
 * Reload during an active roll; confirm native controls remain available.
 * /lg native restores native popups and mouse input.
 
-Validation delivered with this alpha: 16 model scenarios, 12 persistent-history
+Validation delivered with this alpha: 17 model scenarios, 12 persistent-history
 scenarios, 36 asynchronous betting scenarios, and a mocked runtime
 integration check exercising UI loading, controls, all layouts, native restore,
 duplicates, unknown outcomes, demo isolation, compact height, group separators,

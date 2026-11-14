@@ -393,13 +393,13 @@ function A.Render()
                 card:ClearAllPoints(); card:SetPoint("TOPLEFT",UIParent,"TOPLEFT",40+((i-1)%3)*(db.width+8),-70-math.floor((i-1)/3)*90)
                 card.lastRoll=r
             end
-            card.tableOnly=db.presentation=="native" and not r.demo; card.attached=false; card.tableWidth=nil
+            card.tableOnly=not r.demo; card.attached=false; card.tableWidth=nil
             A.UpdateCard(card,r)
         else
             card=A.cards[i]
             if not card then card=A.MakeCard(f.content); A.cards[i]=card end
             card:ClearAllPoints(); card:SetPoint("TOPLEFT",0,-y)
-            card.tableOnly=db.presentation=="native" and not r.demo; card.attached=false; card.tableWidth=nil
+            card.tableOnly=not r.demo; card.attached=false; card.tableWidth=nil
             y=y+A.UpdateCard(card,r)+8
         end
         card:Show(); r.frame=card
@@ -453,19 +453,18 @@ function A.BuildSettings(parent)
         A.db.layout=nextLayout[A.db.layout]; A.Render()
         cycle:SetText(({stack="Stacked panels",tabs="Tabbed window",windows="Separate windows"})[A.db.layout])
     end); cycle:SetPoint("TOPRIGHT",-20,-100); cycle:SetText(({stack="Stacked panels",tabs="Tabbed window",windows="Separate windows"})[A.db.layout])
-    label(common,"Multiple items",105)
+    label(common,"Result/history layout",105)
     number(common,"closeAfter","Close result after seconds (0 = keep)",147,0,300)
     number(common,"scale","UI scale (0.65–1.6)",190,0.65,1.6)
     check(common,"pauseHover","Pause closing while hovered",235)
     check(common,"locked","Lock window position",275)
-    local modes={native="Extend Blizzard loot frames",custom="Standalone LootGoblin panels",none="Blizzard UI only"}
+    local modes={native="Extend Blizzard loot frames",none="Blizzard UI only"}
     local mode=button(common,modes[A.db.presentation],240,function(self)
-        A.db.presentation=({native="custom",custom="none",none="native"})[A.db.presentation]
-        A.db.replaceNative=A.db.presentation=="custom"
+        A.db.presentation=A.db.presentation=="native" and "none" or "native"
         self:SetText(modes[A.db.presentation]); A.ApplyNative(); A.Render()
     end); mode:SetPoint("TOPLEFT",20,-315)
     mode:SetScript("OnShow",function(self) self:SetText(modes[A.db.presentation]) end)
-    check(common,"compact","Compact panels (turn off for larger headers)",352)
+    check(common,"compact","Compact result/history panels",352)
     local preview=button(common,"Preview rolls",125,function() A.Demo() end); preview:SetPoint("TOPLEFT",20,-400)
     local history=button(common,"History / stats",125,function() A.OpenHistory("players") end); history:SetPoint("LEFT",preview,"RIGHT",10,0)
     check(common,"betsEnabled","Show friends' side bets (honor ledger)",438)

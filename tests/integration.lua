@@ -137,7 +137,10 @@ assert(loadfile(base.."/BetUI.lua"))("LootGoblin",A)
 assert(loadfile(base.."/NativeUI.lua"))("LootGoblin",A)
 assert(loadfile(base.."/Core.lua"))("LootGoblin",A)
 local eventFrame=created[#created]
+-- Reproduce the saved settings that made real rolls differ from the demo.
+LootGoblinDB={presentation="custom",layout="tabs",replaceNative=true,locked=false}
 eventFrame.scripts.OnEvent(eventFrame,"ADDON_LOADED","LootGoblin")
+assert(A.db.presentation=="native" and not A.db.replaceNative,"legacy custom settings must migrate automatically")
 assert(registered.name=="LootGoblin" and A.settings,"settings must register at addon load")
 A.OpenSettings(); assert(opened==42,"slash settings must open the registered category")
 GroupLootFrame1.rollID=10
@@ -149,7 +152,7 @@ assert(GroupLootFrame1:GetAlpha()==1 and GroupLootFrame1:IsMouseEnabled(),"nativ
 assert(not nativeRoll.nativeCard.buttons[1]:IsShown(),"attached table must not duplicate roll buttons")
 assert(not A.window:IsShown(),"native rolls must not also open a standalone window")
 assert(GroupLootContainer.reservedSize>100 and nativeLayouts>0,"native slots need room for tables")
-A.db.presentation="custom"; A.Render()
+A.historyView=true; A.Render()
 assert(GroupLootContainer.reservedSize==100,"leaving native mode must restore spacing")
 assert(#A.rolls==1 and A.cards[1].roll.id==10)
 A.Choose(A.rolls[1],1); assert(calls==1)
@@ -160,6 +163,7 @@ A.Render()
 local card=A.cards[1]
 assert(card.timer.value==2 and card.timer.maximum==2 and card.timer.color[2]==0.85)
 assert(card.rows[2].separator:IsShown(),"Need and Greed must have a group separator")
+card.tableOnly=false
 local short=A.UpdateCard(card,A.rolls[1]); A.db.compact=false
 local large=A.UpdateCard(card,A.rolls[1]); assert(short<large,"compact cards must be shorter")
 A.db.compact=true
@@ -170,10 +174,11 @@ A.Choose(A.rolls[1],2); assert(calls==1,"must not submit a second choice")
 for _,layout in ipairs({"stack","tabs","windows"}) do
     A.db.layout=layout; A.Render(); A.OpenSettings(); A.settings:Hide()
 end
-A.db.replaceNative=false; A.ApplyNative(); assert(GroupLootFrame1:GetAlpha()==1 and GroupLootFrame1:IsMouseEnabled())
-A.db.replaceNative=true; A.ApplyNative(); assert(GroupLootFrame1:GetAlpha()==0 and not GroupLootFrame1:IsMouseEnabled())
+GroupLootFrame1.lootGoblinAlpha=1; GroupLootFrame1:SetAlpha(0)
+GroupLootFrame1.lootGoblinMouse=1; GroupLootFrame1:EnableMouse(false)
+A.ApplyNative(); assert(GroupLootFrame1:GetAlpha()==1 and GroupLootFrame1:IsMouseEnabled())
 assert(GroupLootFrame2:GetAlpha()==1,"untracked native rolls must remain visible")
-A.db.presentation="native"; A.ApplyNative(); A.Render()
+A.historyView=false; A.ApplyNative(); A.Render()
 assert(GroupLootFrame1:GetAlpha()==1 and GroupLootFrame1:IsMouseEnabled())
 -- A leader is not a winner. A confirmed result highlights the full row.
 assert(not nativeRoll.nativeCard.rows[1].winner:IsShown())

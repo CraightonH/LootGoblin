@@ -44,32 +44,20 @@ function A.RefreshHistory()
         end
     end
 end
--- Keep Blizzard's scripts and confirmation handling running. Only conceal their
--- presentation, and restore it immediately when replacement is disabled.
+-- Never conceal or replace Blizzard's roll frames. Restore any presentation
+-- state left by the retired replacement mode while preserving native scripts.
 function A.ApplyNative()
-    local gamepad=InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled()
-    local hide=compatible and A.db and A.db.presentation=="custom" and A.db.replaceNative and not gamepad
-    local function visit(frame,conceal)
-        if not frame then return end
-        if conceal then
-            if frame.lootGoblinMouse==nil then frame.lootGoblinMouse=frame:IsMouseEnabled() and 1 or 0 end
-            frame:EnableMouse(false)
-        elseif frame.lootGoblinMouse~=nil then
+    local function restoreMouse(frame)
+        if frame.lootGoblinMouse~=nil then
             frame:EnableMouse(frame.lootGoblinMouse==1); frame.lootGoblinMouse=nil
         end
-        for _,child in ipairs({frame:GetChildren()}) do visit(child,conceal) end
+        for _,child in ipairs({frame:GetChildren()}) do restoreMouse(child) end
     end
     for i=1,4 do
-        local f=_G["GroupLootFrame"..i]
-        if f then
-            -- During reloads or an unsupported roll, keep native controls until
-            -- a custom record exists. Never hide an untracked roll.
-            local conceal=hide and f.rollID and A.byID[f.rollID]~=nil
-            if conceal then
-                if not f.lootGoblinAlpha then f.lootGoblinAlpha=f:GetAlpha() end
-                f:SetAlpha(0)
-            elseif f.lootGoblinAlpha then f:SetAlpha(f.lootGoblinAlpha); f.lootGoblinAlpha=nil end
-            visit(f,conceal)
+        local frame=_G["GroupLootFrame"..i]
+        if frame then
+            if frame.lootGoblinAlpha~=nil then frame:SetAlpha(frame.lootGoblinAlpha); frame.lootGoblinAlpha=nil end
+            restoreMouse(frame)
         end
     end
 end
@@ -146,9 +134,9 @@ function A.Demo()
     end
     A.historyView=false; A.Render()
     if A.demoTemplateWarning then
-        message("0.8.0: native dungeon-roll demo failed; see the error above. No fallback window was opened.")
+        message("0.8.1: native dungeon-roll demo failed; see the error above. No fallback window was opened.")
     else
-        message("0.8.0 dungeon-roll demo: Forever native frames and client layout; simulated choices/results. No real loot is created.")
+        message("0.8.1 dungeon-roll demo: Forever native frames and client layout; simulated choices/results. No real loot is created.")
     end
 end
 local elapsed=0
@@ -221,7 +209,7 @@ events:SetScript("OnEvent",function(_,event,...)
             elseif cmd=="export" then A.OpenExport()
             elseif cmd=="bets" then A.OpenBets()
             elseif cmd=="session" then A.historyView=not A.historyView; A.Render()
-            elseif cmd=="native" then A.db.presentation="none"; A.db.replaceNative=false; A.ApplyNative(); A.Render(); message("Default loot popups restored.")
+            elseif cmd=="native" then A.db.presentation="none"; A.ApplyNative(); A.Render(); message("Default loot popups restored.")
             elseif cmd=="clear" then
                 for _,r in ipairs(A.rolls) do if r.finished then r.dismissed=true; r.pinned=false end end; A.Render()
             else A.OpenSettings() end

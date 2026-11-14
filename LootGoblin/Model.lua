@@ -1,7 +1,7 @@
 local _, A = ...
 A.defaults = {presentation="native", layout="stack", closeAfter=20, scale=1, width=400, rowHeight=18,
     opacity=0.96, locked=false, pauseHover=true, showPassed=true, classColors=true,
-    sort="priority", replaceNative=true, historyLimit=60, x=0, y=180,
+    sort="priority", historyLimit=60, x=0, y=180,
     maxHeight=650, sound=false, fontSize=11, compact=true, groupSeparators=true,
     betsEnabled=false, betPercent=20, betCutoff=10}
 A.labels = {[0]="Need", [1]="Need (off spec)", [2]="Transmog", [3]="Greed",
@@ -41,7 +41,9 @@ function A.InitDB(db)
         end
     end
     db.lootPositions=positions
-    if db.presentation~="native" and db.presentation~="custom" and db.presentation~="none" then db.presentation="native" end
+    -- Retire the old replacement mode: live rolls always extend native frames.
+    if db.presentation~="native" and db.presentation~="none" then db.presentation="native" end
+    db.replaceNative=nil
     if db.layout~="stack" and db.layout~="tabs" and db.layout~="windows" then db.layout="stack" end
     local ranges={closeAfter={0,300},scale={0.65,1.6},width={380,650},rowHeight={18,32},
         opacity={0.4,1},historyLimit={10,200},maxHeight={300,900},fontSize={10,18},x={-4000,4000},y={-4000,4000},
