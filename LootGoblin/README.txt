@@ -1,4 +1,4 @@
-LootGoblin 0.8.1-alpha
+LootGoblin 0.8.2-alpha
 
 A native group-loot extension targeting WoW Forever 1.60.1 (Interface 16001).
 The exact client build has not been confirmed. This is an alpha, checked with
@@ -15,14 +15,16 @@ INSTALL
 5. Run /lg for settings. If you want the default popups back, /lg native
    restores them immediately and saves that preference.
 
-NATIVE PRESENTATION (0.8.1)
+NATIVE PRESENTATION (0.8.2)
 
 Settings are under Options > AddOns > LootGoblin; /lg opens that category.
 The default mode extends Blizzard's original loot frames with a player table.
 The native item header, buttons, timer, and binding confirmations stay in use.
-A confirmed winner receives a full gold row highlight. When the native popup
-closes or is reused, its table moves to the result window until the configured
-timeout. Native spacing expands for tables and restores when disabled; spacing
+A confirmed winner receives a full gold row highlight. When the game hides the
+live popup after your choice, the same native-template header and table remain
+visible through waiting and the result timeout. These retained headers are
+read-only, freeing Blizzard's own frame for new rolls. No custom window opens
+automatically; the session log remains available when opened manually. Native spacing expands for tables and restores when disabled; spacing
 changes defer during combat. Live rolls always use native frames; the old standalone replacement is removed.
 /lg native selects Blizzard UI only. History collection continues.
 Restart the client after updating to load the corrected XML template.
@@ -48,7 +50,7 @@ red. Three pulses fade to a quieter outline until the result closes. Passes,
 all-pass outcomes, and unknown results do not trigger win/loss effects.
 
 Saved custom presentation settings migrate to native extensions on reload.
-The remaining layout options apply to retained results and session history.
+The remaining layout options apply only to manually opened session history.
 
 USE
 
@@ -75,8 +77,8 @@ Blizzard still handles binding confirmations; the addon never confirms them
 automatically. A choice is considered confirmed after history or confirmation
 reports it. The addon never rolls automatically on real items.
 
-Retained results/history can stack in a scrollable window, use tabs, or appear
-in separate windows. Live roll headers always remain native. Tabbed mode has previous/next
+The manually opened session log can stack, use tabs, or show separate windows.
+Active, chosen, and completed loot headers all keep the native template. Tabbed mode has previous/next
 controls for overflow. Separate windows can be dragged individually; their
 positions last for their displayed item. The main window's position is saved.
 

@@ -2,14 +2,14 @@
 
 Native group-loot extensions and persistent roll history for **WoW Forever 1.60.1**, provisionally targeting Interface `16001`.
 
-**Status: 0.8.1 alpha.** The code has passed simulated model, history, betting, UI, and browser checks. It has not been tested inside a running Forever client. The browser previews show the loot/history interface using illustrative data; they are not in-game screenshots and do not demonstrate networked side bets.
+**Status: 0.8.2 alpha.** The code has passed simulated model, history, betting, UI, and browser checks. It has not been tested inside a running Forever client. The browser previews show the loot/history interface using illustrative data; they are not in-game screenshots and do not demonstrate networked side bets.
 
 ## Features
 
 - Blizzard's original loot controls, with a matching player/choice/roll table attached underneath.
 - Confirmed winners highlighted across the entire row in gold; results remain available after the native popup closes.
 - Settings under **Options → AddOns → LootGoblin**; `/lg` opens the same category.
-- Live rolls always use Blizzard's native loot frames with attached tables. Stacked, tabbed, or separate layouts apply to retained results/history.
+- Live rolls always use Blizzard's native loot frames with attached tables. Stacked, tabbed, or separate layouts apply only to the session log you open manually.
 - Need above Greed, then Pass, with separators between choice groups and undecided players last. Transmog appears between Need and Greed when offered by the client.
 - A yellow bar showing how many players have chosen, turning green once all recorded players have chosen. The server may still be resolving the winner.
 - Explicit win, loss, pass, all-pass, and unconfirmed results; configurable closing, and hover hold.
@@ -33,7 +33,7 @@ You can also build an addon-only ZIP:
 python3 scripts/package.py
 ```
 
-This writes `dist/LootGoblin-0.8.1-alpha.zip`. Extract it into `Interface/AddOns/`.
+This writes `dist/LootGoblin-0.8.2-alpha.zip`. Extract it into `Interface/AddOns/`.
 
 Drag the native item header, item icon, or any non-button area of the player
 table to move that item and its table together. Loot buttons retain their clicks. Each of the four loot slots remembers its
@@ -52,8 +52,12 @@ LootGoblin attaches a table to each visible `GroupLootFrame` using its `rollID`.
 Blizzard keeps ownership of the item header, loot buttons, countdown, and binding
 confirmations. Native container spacing grows to accommodate the tables and is
 restored when the extensions are disabled. Spacing changes wait until combat ends.
-When Blizzard hides or recycles a popup, that roll's table moves into LootGoblin's
-result window and follows the configured result timeout. Winners are highlighted
+After a choice hides the live popup, an inert instance of the same native loot
+frame template keeps the item header and attached table visible at its previous
+position, through waiting and the final result. Blizzard's actual frame is free
+for new rolls. Retained displays cannot submit another loot choice, and move
+aside if a new live roll needs the same space. No custom window opens automatically.
+The configured result timeout and hover hold still apply. Winners are highlighted
 only after confirmation; a visible leading roll does not count as a winner.
 
 Settings offer **Extend Blizzard loot frames** or **Blizzard UI only**. The old standalone replacement mode is removed; saved `custom` presentation settings migrate automatically to native extensions, preserving history, bet records, and panel positions.

@@ -180,17 +180,34 @@ A.ApplyNative(); assert(GroupLootFrame1:GetAlpha()==1 and GroupLootFrame1:IsMous
 assert(GroupLootFrame2:GetAlpha()==1,"untracked native rolls must remain visible")
 A.historyView=false; A.ApplyNative(); A.Render()
 assert(GroupLootFrame1:GetAlpha()==1 and GroupLootFrame1:IsMouseEnabled())
+-- Reproduce the actual handoff: the native popup hides as soon as we choose,
+-- while the party has not yet supplied a final outcome.
+GroupLootFrame1:Hide(); A.Render()
+local pending=nativeRoll.retainedFrame
+assert(pending and pending:IsShown() and not nativeRoll.finished and not A.window:IsShown())
+assert(pending.Name.text==nativeRoll.name and pending.card.attached)
+assert(pending.card:GetWidth()==pending:GetWidth(),"retained layout must keep native width")
+assert(not pending.LootButtonContainer.NeedButton.enabled and not pending.rollID)
+assert(pending.card.betHeading:IsShown()==A.bettingAvailable)
+GroupLootFrame1:Show(); A.Render()
+assert(not pending:IsShown() and nativeRoll.nativeFrame==GroupLootFrame1,"a returning live frame must replace its inert retained copy")
 -- A leader is not a winner. A confirmed result highlights the full row.
 assert(not nativeRoll.nativeCard.rows[1].winner:IsShown())
 A.ApplyDrop(nativeRoll,{rollInfos={{playerName="You",isSelf=true,state=0,roll=44,isWinner=true},
     {playerName="Friend",state=3,roll=99}}},now)
 A.Render(); assert(nativeRoll.nativeCard.rows[1].winner:IsShown())
 assert(nativeRoll.nativeCard.rows[1].name.text:find("You"))
-A.db.layout="stack"; GroupLootFrame1:Hide(); A.Render()
-assert(not nativeRoll.nativeAttached and A.window:IsShown(),"result must survive native frame hiding")
-assert(A.cards[1].tableOnly and A.cards[1].rows[1].winner:IsShown())
+A.db.layout="windows"; GroupLootFrame1:Hide(); A.Render()
+local retained=nativeRoll.retainedFrame
+assert(retained and retained:IsShown() and nativeRoll.nativeAttached,"result must retain a native-template header")
+assert(retained.template=="LootGoblinDemoLootFrameTemplate" and not retained.rollID)
+assert(retained.card.attached and retained.card.point[2]==retained and not retained.card.title:IsShown())
+assert(retained.card.rows[1].winner:IsShown() and not A.window:IsShown(),"automatic results must never open custom windows")
+local choicesBefore=calls
+retained.LootButtonContainer.NeedButton.scripts.OnClick()
+assert(calls==choicesBefore and not retained.LootButtonContainer.NeedButton.enabled,"retained headers must not submit live choices")
 GroupLootFrame1.rollID=999; GroupLootFrame1:Show(); A.Render()
-assert(not nativeRoll.nativeAttached,"recycled native frame must not inherit the old table")
+assert(nativeRoll.retainedFrame==retained and nativeRoll.nativeFrame~=GroupLootFrame1,"native frame reuse must not reassign the old item")
 GroupLootFrame1.rollID=10; A.Render()
 A.db.presentation="none"; A.ApplyNative(); A.Render()
 assert(not nativeRoll.nativeCard:IsShown() and not A.window:IsShown())
@@ -205,8 +222,8 @@ eventFrame.scripts.OnEvent(eventFrame,"START_LOOT_ROLL",11,60000)
 A.RefreshHistory(); assert(not A.rolls[1].key and not A.rolls[2].key)
 assert(A.rolls[1].ambiguous and #A.rolls[1].rows==0)
 GroupLootFrame1.rollID=11; A.Render()
-assert(A.rolls[2].nativeAttached and not A.rolls[1].nativeAttached)
-assert(A.rolls[2].nativeCard==nativeRoll.nativeCard and #A.nativeCards==1,"native tables must be pooled per slot")
+assert(A.rolls[2].nativeFrame==GroupLootFrame1 and A.rolls[1].nativeFrame~=GroupLootFrame1)
+assert(A.rolls[2].nativeCard==A.nativeCards[1] and #A.nativeCards==1,"native tables must be pooled per slot")
 assert(A.rolls[2].nativeCard.roll==A.rolls[2] and not A.rolls[2].nativeCard.rows[1]:IsShown())
 -- Combat defers spacing writes; the next render after combat applies them.
 local oldSpacing=GroupLootContainer.reservedSize

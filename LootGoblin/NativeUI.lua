@@ -1,6 +1,7 @@
 local _,A=...
 A.nativeCards={}
 A.demoFrames={}
+A.retainedFrames={}
 -- Siblings of Blizzard's frames: hiding/recycling a native roll must not hide
 -- the retained result or turn a later item's controls into controls for this roll.
 local function enabled()
@@ -15,7 +16,7 @@ function A.LayoutNative()
     local size=A.nativeSpacing
     if enabled() then
         for _,r in ipairs(A.rolls) do
-            if not r.demo and r.nativeAttached and r.nativeCard then
+            if not r.demo and r.nativeAttached and r.nativeCard and not r.nativeFrame.lootGoblinRetained then
                 size=math.max(size,(r.nativeFrame:GetHeight() or 80)+r.nativeCard:GetHeight()+16)
             end
         end
@@ -52,6 +53,7 @@ function A.RenderAttachments()
     for _,card in pairs(A.nativeCards) do
         if not card.roll or not card.roll.nativeAttached then card:Hide() end
     end
+    A.RenderRetainedRolls()
     A.RenderNativeDemo()
     A.LayoutNative()
 end
@@ -78,13 +80,20 @@ function A.AttachTable(native,r,card,slot)
     card:ClearAllPoints(); card:SetPoint("TOP",native,"BOTTOM",0,-2)
     card:Show(); r.frame=card
     A.EnableLootDragging(native,card,slot)
+    if not r.demo and not native.lootGoblinRetained then
+        r.nativeSlot=slot
+        local x,y=native:GetCenter(); local px,py=UIParent:GetCenter()
+        local ratio=native:GetEffectiveScale()/UIParent:GetEffectiveScale()
+        r.nativeDisplayPosition={x=x*ratio-px,y=y*ratio-py}
+        r.nativeDisplayScale=ratio
+    end
 end
-local function makeDemoFrame(index)
+function A.CreateNativeLootDisplay(frameName)
     if A.demoTemplateWarning then return nil end
-    local ok,f=pcall(CreateFrame,"Frame","LootGoblinDemoLootFrame"..index,UIParent,"LootGoblinDemoLootFrameTemplate")
+    local ok,f=pcall(CreateFrame,"Frame",frameName,UIParent,"LootGoblinDemoLootFrameTemplate")
     if not ok or not f or not f.IconFrame or not f.Name or not f.Timer or not f.LootButtonContainer then
         if not A.demoTemplateWarning then
-            print("LootGoblin 0.8.1: native dungeon-roll demo could not load. Restart the client to load Demo.xml. "..tostring(ok and "Missing Forever loot frame fields" or f))
+            print("LootGoblin 0.8.2: native loot display could not load. Restart the client to load Demo.xml. "..tostring(ok and "Missing Forever loot frame fields" or f))
             A.demoTemplateWarning=true
         end
         if ok and f then f:Hide() end
@@ -97,17 +106,20 @@ local function makeDemoFrame(index)
     f.IconFrame:SetScript("OnUpdate",nil); f.IconFrame:SetScript("OnClick",nil)
     f.IconFrame:SetScript("OnEnter",function(icon)
         GameTooltip:SetOwner(icon,"ANCHOR_RIGHT")
-        GameTooltip:SetText(f.roll.name.." (demo)"); GameTooltip:Show()
+        if f.roll.demo then GameTooltip:SetText((f.roll.name or "Sample item").." (demo)")
+        elseif f.roll.link then GameTooltip:SetHyperlink(f.roll.link)
+        else GameTooltip:SetText(f.roll.name or "Item") end
+        GameTooltip:Show()
     end)
     f.IconFrame:SetScript("OnLeave",function() GameTooltip:Hide() end)
     for key,kind in pairs({NeedButton=1,GreedButton=2,PassButton=0,TransmogButton=4,DisenchantButton=3}) do
         local b=f.LootButtonContainer[key]
         if b then
             local choice=kind
-            b:SetScript("OnClick",function() if f.roll then A.Choose(f.roll,choice) end end)
+            b:SetScript("OnClick",function() if f.roll and f.roll.demo then A.Choose(f.roll,choice) end end)
             b:SetScript("OnEnter",function()
                 GameTooltip:SetOwner(b,"ANCHOR_RIGHT")
-                GameTooltip:SetText((b.tooltipText or key).." (demo only)"); GameTooltip:Show()
+                GameTooltip:SetText((b.tooltipText or key)..(f.roll.demo and " (demo only)" or " (display only)")); GameTooltip:Show()
             end)
             b:SetScript("OnLeave",function() GameTooltip:Hide() end)
         end
@@ -115,6 +127,120 @@ local function makeDemoFrame(index)
     if f.NeedRollAnim then f.NeedRollAnim:Hide() end
     f.card=A.MakeCard(UIParent); f.card:SetFrameStrata("DIALOG")
     return f
+end
+-- This is the same inert Blizzard template for demo and retained live results.
+-- A retained frame never owns a real roll ID or submits another loot choice.
+function A.PopulateNativeLootDisplay(f,r)
+    f.roll=r
+    f.Name:SetText(r.name or "Loading item")
+    f.IconFrame.Icon:SetTexture(r.texture or "Interface\\Icons\\INV_Misc_Dice_02")
+    if f.IconFrame.Count then
+        f.IconFrame.Count:SetText(r.count and r.count>1 and r.count or "")
+        f.IconFrame.Count:SetShown(r.count and r.count>1 or false)
+    end
+    if ColorManager and r.quality then
+        if ColorManager.GetColorDataForItemQuality then
+            local color=ColorManager.GetColorDataForItemQuality(r.quality)
+            if color then
+                f.Name:SetTextColor(color.r,color.g,color.b)
+                if f.Border then f.Border:SetVertexColor(color.r,color.g,color.b) end
+            end
+        end
+        if f.IconFrame.Border and ColorManager.GetAtlasDataForLootBorderItemQuality then
+            local atlas=ColorManager.GetAtlasDataForLootBorderItemQuality(r.quality)
+            if atlas then f.IconFrame.Border:SetAtlas(atlas) end
+        end
+    end
+    f.Timer:SetMinMaxValues(0,r.duration)
+    f.Timer:SetValue(r.finished and 0 or math.max(0,r.started+r.duration-GetTime()))
+    for key,kind in pairs({NeedButton=1,GreedButton=2,PassButton=0,TransmogButton=4,DisenchantButton=3}) do
+        local b=f.LootButtonContainer[key]
+        if b then
+            b:SetShown(not not (r.allowed and r.allowed[kind]))
+            local active=r.demo and not r.finished and not r.choice
+            b:SetEnabled(not not active); b:SetAlpha(active and 1 or 0.35)
+        end
+    end
+end
+function A.RenderRetainedRolls()
+    for _,f in ipairs(A.retainedFrames) do f.retainedVisible=false end
+    if enabled() and not A.historyView then
+        for _,r in ipairs(A.rolls) do
+            if not r.demo and not r.dismissed and not r.nativeAttached and (r.nativeSeen or r.closed or r.finished) then
+                local f=r.retainedFrame
+                if not f or f.roll~=r then
+                    f=nil
+                    for _,candidate in ipairs(A.retainedFrames) do if not candidate.roll then f=candidate; break end end
+                    if not f then
+                        f=A.CreateNativeLootDisplay("LootGoblinRetainedLootFrame"..(#A.retainedFrames+1))
+                        if f then f.lootGoblinRetained=true; A.retainedFrames[#A.retainedFrames+1]=f end
+                    end
+                    r.retainedFrame=f
+                end
+                if f then
+                    f.retainedVisible=true
+                    f:SetScale(r.nativeDisplayScale or A.db.scale)
+                    A.PopulateNativeLootDisplay(f,r)
+                    A.AttachTable(f,r,f.card,r.nativeSlot or 1)
+                    f:Show()
+                end
+            end
+        end
+    end
+    A.PositionRetainedRolls()
+    for _,f in ipairs(A.retainedFrames) do
+        if not f.retainedVisible then
+            if f.roll and f.roll.retainedFrame==f then f.roll.retainedFrame=nil end
+            f.roll=nil; f:Hide(); f.card:Hide()
+        end
+    end
+end
+-- Keep a released result near its previous header, but never cover a new live
+-- roll that reuses the same native slot. Only addon-owned result frames move.
+function A.PositionRetainedRolls()
+    local occupied={}
+    local function rect(frame,card,p,scale)
+        local half=frame:GetWidth()*scale/2; local top=frame:GetHeight()*scale/2
+        return {left=p.x-half,right=p.x+half,top=p.y+top,bottom=p.y-top-(card:GetHeight()+2)*scale}
+    end
+    local function intersects(a,b)
+        return a.left<b.right+8 and a.right>b.left-8 and a.bottom<b.top+8 and a.top>b.bottom-8
+    end
+    for _,r in ipairs(A.rolls) do
+        if not r.demo and r.nativeAttached and r.nativeFrame and not r.nativeFrame.lootGoblinRetained then
+            occupied[#occupied+1]=rect(r.nativeFrame,r.nativeCard,r.nativeDisplayPosition,r.nativeDisplayScale)
+        end
+    end
+    local screenW,screenH=UIParent:GetWidth()/2,UIParent:GetHeight()/2
+    for _,f in ipairs(A.retainedFrames) do
+        if f.retainedVisible then
+            local r=f.roll; local scale=f:GetEffectiveScale()/UIParent:GetEffectiveScale()
+            local base=r.retainedPosition or r.nativeDisplayPosition or A.db.lootPositions[r.nativeSlot or 1] or {x=A.db.x,y=A.db.y}
+            local chosen={x=base.x,y=base.y}
+            local bounds=rect(f,f.card,chosen,scale)
+            local function free(box)
+                if box.left< -screenW+8 or box.right>screenW-8 or box.bottom< -screenH+8 or box.top>screenH-8 then return false end
+                for _,used in ipairs(occupied) do if intersects(box,used) then return false end end
+                return true
+            end
+            if not f.lootGoblinDragging and not free(bounds) then
+                local found=false; local dx=(f:GetWidth()+18)*scale
+                local dy=(f:GetHeight()+f.card:GetHeight()+18)*scale
+                for row=0,#occupied+1 do
+                    for _,column in ipairs({0,-1,1,-2,2}) do
+                        local p={x=base.x+column*dx,y=base.y-row*dy}
+                        local candidate=rect(f,f.card,p,scale)
+                        if free(candidate) then chosen=p; bounds=candidate; found=true; break end
+                    end
+                    if found then break end
+                end
+            end
+            if not f.lootGoblinDragging then
+                f:ClearAllPoints(); f:SetPoint("CENTER",UIParent,"CENTER",chosen.x/scale,chosen.y/scale)
+            end
+            occupied[#occupied+1]=bounds
+        end
+    end
 end
 function A.RenderNativeDemo()
     for _,f in ipairs(A.demoFrames) do f.demoVisible=false end
@@ -130,7 +256,7 @@ function A.RenderNativeDemo()
     if not hasDemo or A.demoTemplateWarning then hideUnused(); return end
     if not GroupLootContainer_AddFrame or not GroupLootContainer_Update then
         A.demoTemplateWarning=true
-        print("LootGoblin 0.8.1: this client has no native loot container layout functions; demo stopped.")
+        print("LootGoblin 0.8.2: this client has no native loot container layout functions; demo stopped.")
         return
     end
     local visible={}; local height=0; local tableHeight=0
@@ -151,20 +277,9 @@ function A.RenderNativeDemo()
         if r.demo and not r.dismissed then
             local index=#visible+1
             local f=A.demoFrames[index]
-            if not f then f=makeDemoFrame(index); A.demoFrames[index]=f end
+            if not f then f=A.CreateNativeLootDisplay("LootGoblinDemoLootFrame"..index); A.demoFrames[index]=f end
             if f then
-                f.roll=r -- Intentionally no rollID: never impersonate a live roll.
-                f.Name:SetText(r.name); f.IconFrame.Icon:SetTexture(r.texture)
-                if f.IconFrame.Count then f.IconFrame.Count:Hide() end
-                f.Timer:SetMinMaxValues(0,r.duration)
-                f.Timer:SetValue(r.finished and 0 or math.max(0,r.started+r.duration-GetTime()))
-                for key,kind in pairs({NeedButton=1,GreedButton=2,PassButton=0,TransmogButton=4,DisenchantButton=3}) do
-                    local b=f.LootButtonContainer[key]
-                    if b then
-                        b:SetShown(not not r.allowed[kind])
-                        b:SetEnabled(not r.finished and not r.choice)
-                    end
-                end
+                A.PopulateNativeLootDisplay(f,r)
                 f.demoVisible=true
                 A.AttachTable(f,r,f.card,index)
                 visible[#visible+1]=f
@@ -196,7 +311,9 @@ end
 -- Position the header and let the table follow its anchor. Store UIParent-space
 -- coordinates so changing the preview scale does not change the saved location.
 function A.RestoreLootPosition(frame,slot)
-    local p=A.db.lootPositions[slot]
+    local r=frame.roll
+    local p=frame.lootGoblinRetained and r and (r.retainedPosition or r.nativeDisplayPosition) or A.db.lootPositions[slot]
+    if not p and frame.lootGoblinRetained then p={x=A.db.x,y=A.db.y} end
     if not p or frame.lootGoblinDragging then return end
     local ratio=frame:GetEffectiveScale()/UIParent:GetEffectiveScale()
     frame:ClearAllPoints(); frame:SetPoint("CENTER",UIParent,"CENTER",p.x/ratio,p.y/ratio)
@@ -219,7 +336,9 @@ function A.EnableLootDragging(native,card,slot)
             frame:StopMovingOrSizing(); frame.lootGoblinDragging=false
             local x,y=frame:GetCenter(); local px,py=UIParent:GetCenter()
             local ratio=frame:GetEffectiveScale()/UIParent:GetEffectiveScale()
-            A.db.lootPositions[frame.lootGoblinSlot]={x=x*ratio-px,y=y*ratio-py}
+            local position={x=x*ratio-px,y=y*ratio-py}
+            A.db.lootPositions[frame.lootGoblinSlot]=position
+            if frame.lootGoblinRetained then self.roll.retainedPosition=position end
             A.Render()
         end)
     end

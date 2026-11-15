@@ -5,7 +5,7 @@ local compatible=false
 local function message(s) print("|cff73c7ffLootGoblin:|r "..s) end
 local function readItem(r)
     local texture,name,count,quality,bop,need,greed,de,rn,rg,rd,skill,transmog=GetLootRollItemInfo(r.id)
-    r.texture=texture; r.name=name; r.link=GetLootRollItemLink(r.id) or r.link
+    r.texture=texture; r.name=name; r.quality=quality; r.count=count; r.link=GetLootRollItemLink(r.id) or r.link
     r.allowed={[0]=true,[1]=need,[2]=greed,[3]=de,[4]=transmog}
     r.reasons={[1]=rn and _G["LOOT_ROLL_INELIGIBLE_REASON"..rn],
         [2]=rg and _G["LOOT_ROLL_INELIGIBLE_REASON"..rg],
@@ -134,9 +134,9 @@ function A.Demo()
     end
     A.historyView=false; A.Render()
     if A.demoTemplateWarning then
-        message("0.8.1: native dungeon-roll demo failed; see the error above. No fallback window was opened.")
+        message("0.8.2: native dungeon-roll demo failed; see the error above. No fallback window was opened.")
     else
-        message("0.8.1 dungeon-roll demo: Forever native frames and client layout; simulated choices/results. No real loot is created.")
+        message("0.8.2 dungeon-roll demo: Forever native frames and client layout; simulated choices/results. No real loot is created.")
     end
 end
 local elapsed=0

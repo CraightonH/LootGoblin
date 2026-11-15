@@ -329,10 +329,9 @@ function A.Render()
     local db=A.db; local f=A.window; local visible={}
     if A.RenderAttachments then A.RenderAttachments() end
     for _,r in ipairs(A.rolls) do
-        if A.historyView or (not r.nativeDemo and not r.dismissed and (r.demo or db.presentation~="none") and not r.nativeAttached and
-            (db.presentation~="native" or r.demo or r.finished or r.closed or r.nativeSeen)) then
-            visible[#visible+1]=r
-        end
+        -- The custom window is an explicitly opened session log only. Active,
+        -- selected, and completed rolls all stay in native-template displays.
+        if A.historyView then visible[#visible+1]=r end
     end
     if A.historyView then
         table.sort(visible,function(a,b) return a.started>b.started end)
@@ -349,7 +348,7 @@ function A.Render()
     for _,card in ipairs(A.cards) do card:Hide() end
     for _,floater in ipairs(A.floaters) do floater:Hide() end
     for _,b in ipairs(f.tabButtons) do b:Hide() end
-    local layout=A.historyView and "stack" or db.layout
+    local layout=db.layout
     local tabs=layout=="tabs"
     f.tabs:SetShown(tabs)
     f.tabs:ClearAllPoints(); f.tabs:SetPoint("TOPLEFT",12,db.compact and -38 or -61)
@@ -453,7 +452,7 @@ function A.BuildSettings(parent)
         A.db.layout=nextLayout[A.db.layout]; A.Render()
         cycle:SetText(({stack="Stacked panels",tabs="Tabbed window",windows="Separate windows"})[A.db.layout])
     end); cycle:SetPoint("TOPRIGHT",-20,-100); cycle:SetText(({stack="Stacked panels",tabs="Tabbed window",windows="Separate windows"})[A.db.layout])
-    label(common,"Result/history layout",105)
+    label(common,"Session history layout",105)
     number(common,"closeAfter","Close result after seconds (0 = keep)",147,0,300)
     number(common,"scale","UI scale (0.65–1.6)",190,0.65,1.6)
     check(common,"pauseHover","Pause closing while hovered",235)
@@ -464,7 +463,7 @@ function A.BuildSettings(parent)
         self:SetText(modes[A.db.presentation]); A.ApplyNative(); A.Render()
     end); mode:SetPoint("TOPLEFT",20,-315)
     mode:SetScript("OnShow",function(self) self:SetText(modes[A.db.presentation]) end)
-    check(common,"compact","Compact result/history panels",352)
+    check(common,"compact","Compact session history panels",352)
     local preview=button(common,"Preview rolls",125,function() A.Demo() end); preview:SetPoint("TOPLEFT",20,-400)
     local history=button(common,"History / stats",125,function() A.OpenHistory("players") end); history:SetPoint("LEFT",preview,"RIGHT",10,0)
     check(common,"betsEnabled","Show friends' side bets (honor ledger)",438)
